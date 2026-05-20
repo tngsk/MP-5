@@ -397,7 +397,7 @@
                 if (mapping.speed === "NONE") {
                     sourceNode.playbackRate = 1.0;
                 } else {
-                    sourceNode.playbackRate = Math.pow(2, sVal * 2 - 1); // 0.5x to 2.0x
+                    sourceNode.playbackRate = Math.pow(10, sVal * 2 - 1); // 0.1x to 10.0x
                 }
                 
                 gainNode.gain.rampTo(normalizationGain, 0.1);
