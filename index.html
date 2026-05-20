@@ -157,7 +157,7 @@
     <div class="matrix">
         <div class="col" id="col-pitch"></div>
         <div class="col" id="col-filter"></div>
-        <div class="col" id="col-volume"></div>
+        <div class="col" id="col-speed"></div>
     </div>
 
     <div class="controls">
@@ -185,14 +185,15 @@
     </div>
 
     <script>
-        const sensors = { T_X: 0.5, T_Y: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
-        const mapping = { pitch: "A_Y", filter: "T_X", volume: "A_Z" };
+        const sensors = { NONE: 0.5, T_X: 0.5, T_Y: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
+        const mapping = { pitch: "A_Y", filter: "T_X", speed: "NONE" };
         let audioCtx, recorder, stream, recordedBuffer, sourceNode, filterNode, gainNode;
         let isRec = false, isRun = false;
         let trim = { start: 0.15, end: 0.85 };
         let normalizationGain = 1.0;
 
         const icons = {
+            NONE: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
             T_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="16,8 20,12 16,16"/><polyline points="8,8 4,12 8,16"/></svg>',
             T_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="8,16 12,20 16,16"/><polyline points="8,8 12,4 16,8"/></svg>',
             A_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
@@ -200,7 +201,7 @@
             A_Z: '<svg viewBox="0 0 24 24" stroke-width="2.5"><circle cx="12" cy="12" r="5"/></svg>'
         };
 
-        ['pitch', 'filter', 'volume'].forEach(param => {
+        ['pitch', 'filter', 'speed'].forEach(param => {
             const container = document.getElementById(`col-${param}`);
             Object.keys(sensors).forEach(s => {
                 const slot = document.createElement('div');
@@ -216,11 +217,13 @@
         });
 
         async function unlock() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            await Tone.start();
+            audioCtx = Tone.context;
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            filterNode = audioCtx.createBiquadFilter();
-            gainNode = audioCtx.createGain();
-            filterNode.connect(gainNode).connect(audioCtx.destination);
+            filterNode = new Tone.Filter();
+            gainNode = new Tone.Gain();
+            filterNode.connect(gainNode);
+            gainNode.toDestination();
             
             document.getElementById('overlay').style.display = 'none';
             fetchServerFiles();
@@ -329,11 +332,11 @@
             if (!recordedBuffer) return;
             if (isRun) {
                 sourceNode.stop();
+                sourceNode.dispose();
                 isRun = false;
                 runBtn.classList.remove('active');
             } else {
-                sourceNode = audioCtx.createBufferSource();
-                sourceNode.buffer = recordedBuffer;
+                sourceNode = new Tone.GrainPlayer(recordedBuffer);
                 sourceNode.loop = true;
                 sourceNode.loopStart = recordedBuffer.duration * trim.start;
                 sourceNode.loopEnd = recordedBuffer.duration * trim.end;
@@ -365,16 +368,30 @@
             }
 
             if (isRun) {
-                const now = audioCtx.currentTime;
+                const now = Tone.now();
                 const pVal = sensors[mapping.pitch];
                 const fVal = sensors[mapping.filter];
-                const vVal = sensors[mapping.volume];
+                const sVal = sensors[mapping.speed];
 
-                sourceNode.playbackRate.setTargetAtTime(Math.pow(2, pVal * 2 - 1), now, 0.1);
-                filterNode.frequency.setTargetAtTime(100 + Math.pow(fVal, 2) * 8000, now, 0.1);
+                if (mapping.pitch === "NONE") {
+                    sourceNode.detune = 0;
+                } else {
+                    sourceNode.detune = (pVal - 0.5) * 4800; // -2400 to +2400 cents
+                }
+
+                if (mapping.filter === "NONE") {
+                    filterNode.frequency.value = 20000;
+                } else {
+                    filterNode.frequency.rampTo(100 + Math.pow(fVal, 2) * 8000, 0.1);
+                }
+
+                if (mapping.speed === "NONE") {
+                    sourceNode.playbackRate = 1.0;
+                } else {
+                    sourceNode.playbackRate = Math.pow(2, sVal * 2 - 1); // 0.5x to 2.0x
+                }
                 
-                const finalGain = vVal * normalizationGain;
-                gainNode.gain.setTargetAtTime(finalGain, now, 0.1);
+                gainNode.gain.rampTo(normalizationGain, 0.1);
             }
             requestAnimationFrame(draw);
         }
