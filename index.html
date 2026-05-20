@@ -181,4 +181,238 @@
         const mapping = { pitch: "A_Y", filter: "T_X", volume: "A_Z" };
         let audioCtx, recorder, stream, recordedBuffer, sourceNode, filterNode, gainNode;
         let isRec = false, isRun = false;
-        let trim = { start: 0.15, end:
+        let trim = { start: 0.15, end: 0.85 };
+        let normalizationGain = 1.0;
+
+        const icons = {
+            T_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="16,8 20,12 16,16"/><polyline points="8,8 4,12 8,16"/></svg>',
+            T_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="8,16 12,20 16,16"/><polyline points="8,8 12,4 16,8"/></svg>',
+            A_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
+            A_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/></svg>',
+            A_Z: '<svg viewBox="0 0 24 24" stroke-width="2.5"><circle cx="12" cy="12" r="5"/></svg>'
+        };
+
+        ['pitch', 'filter', 'volume'].forEach(param => {
+            const container = document.getElementById(`col-${param}`);
+            Object.keys(sensors).forEach(s => {
+                const slot = document.createElement('div');
+                slot.className = `slot ${mapping[param] === s ? 'active' : ''}`;
+                slot.innerHTML = icons[s];
+                slot.onclick = () => {
+                    mapping[param] = s;
+                    [...container.children].forEach(c => c.classList.remove('active'));
+                    slot.classList.add('active');
+                };
+                container.appendChild(slot);
+            });
+        });
+
+        async function unlock() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            filterNode = audioCtx.createBiquadFilter();
+            gainNode = audioCtx.createGain();
+            filterNode.connect(gainNode).connect(audioCtx.destination);
+            
+            document.getElementById('overlay').style.display = 'none';
+            fetchServerFiles();
+            requestAnimationFrame(draw);
+        }
+
+        async function fetchServerFiles() {
+            try {
+                const res = await fetch('/api/files');
+                const data = await res.json();
+                const listContainer = document.getElementById('fileList');
+                listContainer.innerHTML = '';
+
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(filename => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        item.innerText = filename.toUpperCase();
+                        item.onclick = () => loadServerFile(filename);
+                        listContainer.appendChild(item);
+                    });
+                } else {
+                    listContainer.innerHTML = '<div style="font-size:0.6rem;opacity:0.5;padding:8px;">NO_PRESETS_FOUND</div>';
+                }
+            } catch (e) { console.error("Fetch error:", e); }
+        }
+
+        async function loadServerFile(filename) {
+            try {
+                const res = await fetch(`/data/${filename}`);
+                const arrayBuffer = await res.arrayBuffer();
+                recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                calculateNormalization();
+                togglePanel(false);
+            } catch (e) { console.error("Decode error:", e); }
+        }
+
+        const fileIn = document.getElementById('fileIn');
+        fileIn.onchange = async (e) => {
+            if (!e.target.files[0]) return;
+            try {
+                const arrayBuffer = await e.target.files[0].arrayBuffer();
+                recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                calculateNormalization();
+                togglePanel(false);
+            } catch (err) { console.error("Local load error:", err); }
+        };
+
+        function calculateNormalization() {
+            if (!recordedBuffer) return;
+            const data = recordedBuffer.getChannelData(0);
+            
+            const startIdx = Math.max(0, Math.min(data.length - 1, Math.floor(data.length * trim.start)));
+            const endIdx = Math.max(startIdx + 1, Math.min(data.length, Math.floor(data.length * trim.end)));
+            
+            let maxVal = 0.0;
+            for (let i = startIdx; i < endIdx; i++) {
+                const absVal = Math.abs(data[i]);
+                if (absVal > maxVal) maxVal = absVal;
+            }
+
+            const targetLinear = Math.pow(10, -6 / 20); 
+            normalizationGain = maxVal > 0.0001 ? (targetLinear / maxVal) : 1.0;
+        }
+
+        const loadBtn = document.getElementById('loadBtn');
+        const filePanel = document.getElementById('filePanel');
+        
+        function togglePanel(forceState) {
+            const shouldOpen = forceState !== undefined ? forceState : !filePanel.classList.contains('open');
+            if (shouldOpen) {
+                filePanel.classList.add('open');
+                loadBtn.classList.add('panel-open');
+                fetchServerFiles();
+            } else {
+                filePanel.classList.remove('open');
+                loadBtn.classList.remove('panel-open');
+            }
+        }
+        loadBtn.onclick = () => togglePanel();
+
+        const recBtn = document.getElementById('recBtn');
+        recBtn.onclick = () => {
+            if (!isRec) {
+                const chunks = [];
+                recorder = new MediaRecorder(stream);
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks);
+                    const arrayBuffer = await blob.arrayBuffer();
+                    recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    calculateNormalization();
+                };
+                recorder.start();
+                isRec = true;
+                recBtn.classList.add('active');
+            } else {
+                recorder.stop();
+                isRec = false;
+                recBtn.classList.remove('active');
+            }
+        };
+
+        const runBtn = document.getElementById('runBtn');
+        runBtn.onclick = () => {
+            if (!recordedBuffer) return;
+            if (isRun) {
+                sourceNode.stop();
+                isRun = false;
+                runBtn.classList.remove('active');
+            } else {
+                sourceNode = audioCtx.createBufferSource();
+                sourceNode.buffer = recordedBuffer;
+                sourceNode.loop = true;
+                sourceNode.loopStart = recordedBuffer.duration * trim.start;
+                sourceNode.loopEnd = recordedBuffer.duration * trim.end;
+                sourceNode.connect(filterNode);
+                sourceNode.start(0, sourceNode.loopStart);
+                isRun = true;
+                runBtn.classList.add('active');
+            }
+        };
+
+        function draw() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+
+            if (recordedBuffer) {
+                ctx.strokeStyle = isRun ? '#00FF66' : '#888888';
+                ctx.lineWidth = 2 * window.devicePixelRatio;
+                const data = recordedBuffer.getChannelData(0);
+                const step = Math.ceil(data.length / canvas.width);
+                ctx.beginPath();
+                for (let i = 0; i < canvas.width; i++) {
+                    const x = i;
+                    const y = (0.5 + data[i * step] * 0.45) * canvas.height;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            if (isRun) {
+                const now = audioCtx.currentTime;
+                const pVal = sensors[mapping.pitch];
+                const fVal = sensors[mapping.filter];
+                const vVal = sensors[mapping.volume];
+
+                sourceNode.playbackRate.setTargetAtTime(Math.pow(2, pVal * 2 - 1), now, 0.1);
+                filterNode.frequency.setTargetAtTime(100 + Math.pow(fVal, 2) * 8000, now, 0.1);
+                
+                const finalGain = vVal * normalizationGain;
+                gainNode.gain.setTargetAtTime(finalGain, now, 0.1);
+            }
+            requestAnimationFrame(draw);
+        }
+
+        window.onpointermove = (e) => {
+            sensors.T_X = e.clientX / window.innerWidth;
+            sensors.T_Y = e.clientY / window.innerHeight;
+        };
+        window.addEventListener('devicemotion', (e) => {
+            const a = e.accelerationIncludingGravity;
+            if (!a) return;
+            sensors.A_X = (a.x + 9.8) / 19.6;
+            sensors.A_Y = (a.y + 9.8) / 19.6;
+            sensors.A_Z = (a.z + 9.8) / 19.6;
+        });
+
+        let activeHandle = null;
+        const hS = document.getElementById('hStart'), hE = document.getElementById('hEnd');
+        hS.onpointerdown = (e) => { e.stopPropagation(); activeHandle = 'start'; };
+        hE.onpointerdown = (e) => { e.stopPropagation(); activeHandle = 'end'; };
+        
+        const endTrimDrag = () => {
+            if (activeHandle) {
+                calculateNormalization();
+                if (isRun && sourceNode) {
+                    sourceNode.loopStart = recordedBuffer.duration * trim.start;
+                    sourceNode.loopEnd = recordedBuffer.duration * trim.end;
+                }
+                activeHandle = null;
+            }
+        };
+
+        window.onpointerup = endTrimDrag;
+        window.onpointercancel = endTrimDrag;
+
+        window.addEventListener('pointermove', (e) => {
+            if (!activeHandle) return;
+            const x = Math.max(0, Math.min(1, e.clientX / window.innerWidth));
+            if (activeHandle === 'start') {
+                trim.start = Math.min(x, trim.end - 0.05);
+                hS.style.left = (trim.start * 100) + '%';
+            } else {
+                trim.end = Math.max(x, trim.start + 0.05);
+                hE.style.right = ((1 - trim.end) * 100) + '%';
+            }
+        });
+    </script>
+</body>
+</html>
