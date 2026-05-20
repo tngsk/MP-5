@@ -3,7 +3,6 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
