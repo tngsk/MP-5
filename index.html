@@ -54,14 +54,16 @@
         .matrix {
             display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 12px; padding: 4px 0; flex: 2; margin-bottom: 12px; z-index: 10;
+            min-height: 0;
         }
-        .col { display: flex; flex-direction: column; gap: 8px; }
+        .col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
         
         .slot {
             flex: 1; border-radius: 4px; background: var(--surface);
             display: flex; align-items: center; justify-content: center;
             transition: background 0.05s, transform 0.05s; 
             border: 1px solid var(--border); box-shadow: 0 2px 0 var(--border);
+            min-height: 0;
         }
         .slot:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--border); }
         .slot svg { width: 20px; height: 20px; stroke: var(--text); fill: none; opacity: 0.4; }
@@ -73,6 +75,7 @@
 
         .controls {
             display: flex; height: 72px; gap: 24px; justify-content: center; align-items: center; z-index: 10;
+            flex-shrink: 0;
         }
         .btn {
             width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); 
@@ -170,7 +173,10 @@
     </div>
 
     <div id="filePanel">
-        <div class="panel-section-title">01// LOCAL_IMPORT</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="panel-section-title" style="margin: 0;">01// LOCAL_IMPORT</div>
+            <button onclick="togglePanel(false)" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 0; color: var(--text);">&times;</button>
+        </div>
         <div class="upload-trigger" onclick="document.getElementById('fileIn').click()">CHOOSE_LOCAL_FILE...</div>
         <input type="file" id="fileIn" accept="audio/*" hidden>
 
