@@ -129,6 +129,7 @@
         #overlay {
             position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
             background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 16px 16px;
+            cursor: pointer;
         }
         .init-btn {
             width: 64px; height: 64px; border-radius: 50%; background: var(--text); box-shadow: 0 4px 0 #000;
@@ -226,9 +227,29 @@
         });
 
         async function unlock() {
+            try {
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    const permissionState = await DeviceMotionEvent.requestPermission();
+                    if (permissionState !== 'granted') {
+                        console.warn('Device motion permission not granted');
+                    }
+                }
+            } catch (e) {
+                console.error("Device motion permission error:", e);
+            }
+
             await Tone.start();
             audioCtx = Tone.context;
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                } else {
+                    console.warn('navigator.mediaDevices.getUserMedia is not supported or not available (e.g. HTTP)');
+                }
+            } catch (e) {
+                console.warn("Microphone access denied or error:", e);
+            }
+
             filterNode = new Tone.Filter();
             gainNode = new Tone.Gain();
             filterNode.connect(gainNode);
@@ -316,6 +337,10 @@
 
         const recBtn = document.getElementById('recBtn');
         recBtn.onclick = () => {
+            if (!stream) {
+                alert("Microphone is not available. Please allow access and reload, or use HTTPS.");
+                return;
+            }
             if (!isRec) {
                 const chunks = [];
                 recorder = new MediaRecorder(stream);
