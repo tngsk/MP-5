@@ -103,6 +103,48 @@
         }
         #filePanel.open { bottom: 0; }
         
+        #settingsPanel {
+            position: fixed; inset: 0; background: var(--bg); z-index: 60;
+            display: flex; flex-direction: column; padding: 16px;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+            background-size: 16px 16px; overflow-y: auto;
+        }
+        #settingsPanel.open { transform: translateY(0); }
+
+        .settings-header {
+            font-size: 0.8rem; font-weight: bold; letter-spacing: 0.2em; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--text); padding-bottom: 8px;
+        }
+
+        .settings-group { margin-bottom: 20px; }
+        .settings-group label { display: block; font-size: 0.65rem; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.1em; opacity: 0.8; }
+
+        .settings-input-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .settings-input-row input[type="number"] {
+            flex: 1; padding: 8px; background: var(--surface); border: 1px solid var(--border);
+            font-family: inherit; font-size: 0.8rem; color: var(--text); border-radius: 4px;
+        }
+        .settings-input-row input[type="range"] { flex: 1; }
+        .settings-val-display { font-size: 0.7rem; font-weight: bold; width: 40px; text-align: right; }
+
+        .settings-actions { display: flex; gap: 12px; margin-top: auto; padding-top: 24px; }
+        .settings-btn {
+            flex: 1; padding: 12px; font-family: inherit; font-size: 0.75rem; font-weight: bold;
+            cursor: pointer; border-radius: 4px; transition: all 0.05s; border: 1px solid var(--border);
+            box-shadow: 0 2px 0 var(--border); background: var(--surface);
+        }
+        .settings-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--border); }
+        .settings-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: 0 2px 0 #000; }
+        .settings-btn.primary:active { box-shadow: 0 1px 0 #000; }
+
+        #settingsIconBtn {
+            background: none; border: none; cursor: pointer; padding: 0; color: var(--text); opacity: 0.6;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #settingsIconBtn:active { opacity: 1; }
+        #settingsIconBtn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
         .panel-section-title {
             font-size: 0.6rem; color: var(--text); letter-spacing: 0.15em;
             margin: 8px 0 4px 0; opacity: 0.7;
@@ -147,7 +189,12 @@
         <div class="overlay-logo">MP-5 // MOTION_PLAYER</div>
     </div>
 
-    <div class="brand-stamp">MP-5 // MOTION_PLAYER</div>
+    <div class="brand-stamp" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>MP-5 // MOTION_PLAYER</span>
+        <button id="settingsIconBtn" onclick="openSettings()">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+    </div>
 
     <div class="display">
         <canvas id="canvas"></canvas>
@@ -194,6 +241,44 @@
         <div class="file-list" id="fileList"></div>
     </div>
 
+    <div id="settingsPanel">
+        <div class="settings-header">
+            <span>SETTINGS</span>
+        </div>
+
+        <div class="settings-group">
+            <label>RECORDING_TIME (SEC)</label>
+            <div class="settings-input-row">
+                <input type="range" id="stgRecTime" min="1" max="10" step="1" oninput="document.getElementById('stgRecTimeVal').innerText = this.value + 's'">
+                <div id="stgRecTimeVal" class="settings-val-display">5s</div>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label>MAPPING_RANGES</label>
+            <div class="settings-input-row">
+                <span style="font-size:0.6rem; width:50px;">PITCH ±</span>
+                <input type="number" id="stgPitchRange" min="100" max="12000" step="100">
+                <span style="font-size:0.6rem;">cents</span>
+            </div>
+            <div class="settings-input-row">
+                <span style="font-size:0.6rem; width:50px;">FILTER</span>
+                <input type="number" id="stgFilterMax" min="1000" max="20000" step="500">
+                <span style="font-size:0.6rem;">Hz</span>
+            </div>
+            <div class="settings-input-row">
+                <span style="font-size:0.6rem; width:50px;">SPEED</span>
+                <input type="number" id="stgSpeedMax" min="2" max="20" step="1">
+                <span style="font-size:0.6rem;">x max</span>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="settings-btn" onclick="closeSettings(false)">キャンセル</button>
+            <button class="settings-btn primary" onclick="closeSettings(true)">完了</button>
+        </div>
+    </div>
+
     <script>
         const sensors = { NONE: 0.5, T_X: 0.5, T_Y: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
         const mapping = { pitch: "A_Y", filter: "T_X", speed: "NONE" };
@@ -201,6 +286,9 @@
         let isRec = false, isRun = false;
         let trim = { start: 0.15, end: 0.85 };
         let normalizationGain = 1.0;
+
+        let appSettings = { recDuration: 5, pitchRange: 4800, filterMax: 8000, speedMax: 10 };
+        let recTimeout = null;
 
         const icons = {
             NONE: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
@@ -335,6 +423,25 @@
         }
         loadBtn.onclick = () => togglePanel();
 
+        function openSettings() {
+            document.getElementById('stgRecTime').value = appSettings.recDuration;
+            document.getElementById('stgRecTimeVal').innerText = appSettings.recDuration + 's';
+            document.getElementById('stgPitchRange').value = appSettings.pitchRange;
+            document.getElementById('stgFilterMax').value = appSettings.filterMax;
+            document.getElementById('stgSpeedMax').value = appSettings.speedMax;
+            document.getElementById('settingsPanel').classList.add('open');
+        }
+
+        function closeSettings(save) {
+            if (save) {
+                appSettings.recDuration = parseInt(document.getElementById('stgRecTime').value);
+                appSettings.pitchRange = parseInt(document.getElementById('stgPitchRange').value);
+                appSettings.filterMax = parseInt(document.getElementById('stgFilterMax').value);
+                appSettings.speedMax = parseInt(document.getElementById('stgSpeedMax').value);
+            }
+            document.getElementById('settingsPanel').classList.remove('open');
+        }
+
         const recBtn = document.getElementById('recBtn');
         recBtn.onclick = () => {
             if (!stream) {
@@ -354,7 +461,16 @@
                 recorder.start();
                 isRec = true;
                 recBtn.classList.add('active');
+
+                recTimeout = setTimeout(() => {
+                    if (isRec) {
+                        recorder.stop();
+                        isRec = false;
+                        recBtn.classList.remove('active');
+                    }
+                }, appSettings.recDuration * 1000);
             } else {
+                if (recTimeout) clearTimeout(recTimeout);
                 recorder.stop();
                 isRec = false;
                 recBtn.classList.remove('active');
@@ -410,19 +526,20 @@
                 if (mapping.pitch === "NONE") {
                     sourceNode.detune = 0;
                 } else {
-                    sourceNode.detune = (pVal - 0.5) * 4800; // -2400 to +2400 cents
+                    sourceNode.detune = (pVal - 0.5) * appSettings.pitchRange;
                 }
 
                 if (mapping.filter === "NONE") {
                     filterNode.frequency.value = 20000;
                 } else {
-                    filterNode.frequency.rampTo(100 + Math.pow(fVal, 2) * 8000, 0.1);
+                    filterNode.frequency.rampTo(100 + Math.pow(fVal, 2) * appSettings.filterMax, 0.1);
                 }
 
                 if (mapping.speed === "NONE") {
                     sourceNode.playbackRate = 1.0;
                 } else {
-                    sourceNode.playbackRate = Math.pow(10, sVal * 2 - 1); // 0.1x to 10.0x
+                    const maxSpeedLog = Math.log10(appSettings.speedMax);
+                    sourceNode.playbackRate = Math.pow(10, sVal * 2 * maxSpeedLog - maxSpeedLog);
                 }
                 
                 gainNode.gain.rampTo(normalizationGain, 0.1);
