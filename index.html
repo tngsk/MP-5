@@ -385,6 +385,7 @@
 
         let appSettings = { recDuration: 5, pitchRange: 4800, filterMax: 8000, speedMax: 10 };
         let recTimeout = null;
+        let padPlayTimeout = null;
 
         const icons = {
             NONE: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
@@ -592,6 +593,7 @@
 
         const runBtn = document.getElementById('runBtn');
         runBtn.onclick = () => {
+            if (currentMode === '16pad') return;
             if (!recordedBuffer) return;
             if (isRun) {
                 sourceNode.stop();
@@ -751,6 +753,18 @@
         });
 
         function setMode(mode) {
+            if (currentMode !== mode) {
+                if (padPlayTimeout) {
+                    clearTimeout(padPlayTimeout);
+                    padPlayTimeout = null;
+                }
+                if (isRun && sourceNode) {
+                    sourceNode.stop();
+                    sourceNode.dispose();
+                    isRun = false;
+                    document.getElementById('runBtn').classList.remove('active');
+                }
+            }
             currentMode = mode;
             ['gyro', 'xypad', '16pad'].forEach(m => {
                 document.getElementById(`btn-${m}`).classList.toggle('active', m === mode);
@@ -812,6 +826,40 @@
                 btn.setPointerCapture(e.pointerId);
                 btn.classList.add('active');
                 activePadPitch = pitchValue;
+
+                if (!recordedBuffer) return;
+
+                if (padPlayTimeout) {
+                    clearTimeout(padPlayTimeout);
+                    padPlayTimeout = null;
+                }
+
+                if (isRun && sourceNode) {
+                    sourceNode.stop();
+                    sourceNode.dispose();
+                }
+
+                sourceNode = new Tone.GrainPlayer(recordedBuffer);
+                sourceNode.loop = false;
+
+                const duration = recordedBuffer.duration * (trim.end - trim.start);
+                const offset = recordedBuffer.duration * trim.start;
+
+                sourceNode.connect(filterNode);
+                sourceNode.detune = activePadPitch;
+
+                sourceNode.start(0, offset, duration);
+
+                isRun = true;
+                const runBtn = document.getElementById('runBtn');
+                runBtn.classList.add('active');
+
+                padPlayTimeout = setTimeout(() => {
+                    if (currentMode === '16pad') {
+                        isRun = false;
+                        runBtn.classList.remove('active');
+                    }
+                }, duration * 1000);
             });
             const releasePad = () => {
                 btn.classList.remove('active');
