@@ -260,6 +260,7 @@
 
     <div class="display">
         <canvas id="canvas"></canvas>
+        <div id="hStart" class="handle" style="left: 15%; pointer-events: none;"></div>
         <div id="hEnd" class="handle" style="right: 15%"></div>
     </div>
 
@@ -378,7 +379,7 @@
         let activePadPitch = null;
         let audioCtx, recorder, stream, recordedBuffer, originalBuffer, sourceNode, filterNode, gainNode;
         let isRec = false, isRun = false;
-        let trim = { start: 0.0, end: 0.85 };
+        let trim = { start: 0.15, end: 0.85 };
         let normalizationGain = 1.0;
         let offsetRatio = 0.0;
 
@@ -492,7 +493,12 @@
             const src = originalBuffer.getChannelData(0);
             const dst = recordedBuffer.getChannelData(0);
             const len = originalBuffer.length;
-            const offsetSamples = Math.floor(len * offsetRatio);
+
+            // Calculate effective offset including the visual start point
+            // This makes the start of the buffer visually align with the hStart handle when offsetRatio is 0
+            const effectiveRatio = ((offsetRatio + trim.start) % 1.0 + 1.0) % 1.0;
+            const offsetSamples = Math.floor(len * effectiveRatio);
+
             for (let i = 0; i < len; i++) {
                 dst[i] = src[(i - offsetSamples + len) % len];
             }
@@ -742,7 +748,7 @@
             if (activeHandle === 'end') {
                 const rect = displayEl.getBoundingClientRect();
                 const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / displayEl.clientWidth));
-                trim.end = Math.max(0.05, x); // Start is always 0.0, so end must be at least 0.05
+                trim.end = Math.max(trim.start + 0.05, x); // End must be at least 0.05 after start
                 hE.style.right = ((1 - trim.end) * 100) + '%';
             } else if (isOffsetDrag) {
                 const deltaX = e.clientX - startOffsetX;
