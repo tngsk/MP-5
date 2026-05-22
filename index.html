@@ -377,10 +377,11 @@
         let currentMode = 'gyro';
         let xyValues = { x: 0.5, y: 0.5 };
         let activePadPitch = null;
-        let audioCtx, recorder, stream, recordedBuffer, sourceNode, filterNode, gainNode;
+        let audioCtx, recorder, stream, recordedBuffer, originalBuffer, sourceNode, filterNode, gainNode;
         let isRec = false, isRun = false;
         let trim = { start: 0.15, end: 0.85 };
         let normalizationGain = 1.0;
+        let offsetRatio = 0.0;
 
         let appSettings = { recDuration: 5, pitchRange: 4800, filterMax: 8000, speedMax: 10 };
         let recTimeout = null;
@@ -466,8 +467,9 @@
             try {
                 const res = await fetch(`/data/${filename}`);
                 const arrayBuffer = await res.arrayBuffer();
-                recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                calculateNormalization();
+                originalBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                offsetRatio = 0.0;
+                applyOffset();
                 togglePanel(false);
             } catch (e) { console.error("Decode error:", e); }
         }
@@ -477,11 +479,28 @@
             if (!e.target.files[0]) return;
             try {
                 const arrayBuffer = await e.target.files[0].arrayBuffer();
-                recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                calculateNormalization();
+                originalBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                offsetRatio = 0.0;
+                applyOffset();
                 togglePanel(false);
             } catch (err) { console.error("Local load error:", err); }
         };
+
+        function applyOffset() {
+            if (!originalBuffer) return;
+            recordedBuffer = audioCtx.createBuffer(1, originalBuffer.length, originalBuffer.sampleRate);
+            const src = originalBuffer.getChannelData(0);
+            const dst = recordedBuffer.getChannelData(0);
+            const len = originalBuffer.length;
+            const offsetSamples = Math.floor(len * offsetRatio);
+            for (let i = 0; i < len; i++) {
+                dst[i] = src[(i - offsetSamples + len) % len];
+            }
+            calculateNormalization();
+            if (isRun && sourceNode) {
+                sourceNode.buffer = new Tone.ToneAudioBuffer(recordedBuffer);
+            }
+        }
 
         function calculateNormalization() {
             if (!recordedBuffer) return;
@@ -548,8 +567,9 @@
                 recorder.onstop = async () => {
                     const blob = new Blob(chunks);
                     const arrayBuffer = await blob.arrayBuffer();
-                    recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                    calculateNormalization();
+                    originalBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    offsetRatio = 0.0;
+                    applyOffset();
                 };
                 recorder.start();
                 isRec = true;
@@ -685,18 +705,48 @@
             }
         };
 
-        window.onpointerup = endTrimDrag;
-        window.onpointercancel = endTrimDrag;
+        let isOffsetDrag = false;
+        let startOffsetX = 0;
+        let startOffsetRatio = 0;
+        const displayEl = document.querySelector('.display');
+
+        displayEl.addEventListener('pointerdown', (e) => {
+            if (e.target === hS || e.target === hE || activeHandle) return;
+            isOffsetDrag = true;
+            startOffsetX = e.clientX;
+            startOffsetRatio = offsetRatio;
+            displayEl.setPointerCapture(e.pointerId);
+        });
+
+        window.onpointerup = (e) => {
+            endTrimDrag();
+            if (isOffsetDrag) {
+                isOffsetDrag = false;
+                displayEl.releasePointerCapture(e.pointerId);
+            }
+        };
+        window.onpointercancel = (e) => {
+            endTrimDrag();
+            if (isOffsetDrag) {
+                isOffsetDrag = false;
+            }
+        };
 
         window.addEventListener('pointermove', (e) => {
-            if (!activeHandle) return;
-            const x = Math.max(0, Math.min(1, e.clientX / window.innerWidth));
-            if (activeHandle === 'start') {
-                trim.start = Math.min(x, trim.end - 0.05);
-                hS.style.left = (trim.start * 100) + '%';
-            } else {
-                trim.end = Math.max(x, trim.start + 0.05);
-                hE.style.right = ((1 - trim.end) * 100) + '%';
+            if (activeHandle) {
+                const x = Math.max(0, Math.min(1, e.clientX / window.innerWidth));
+                if (activeHandle === 'start') {
+                    trim.start = Math.min(x, trim.end - 0.05);
+                    hS.style.left = (trim.start * 100) + '%';
+                } else {
+                    trim.end = Math.max(x, trim.start + 0.05);
+                    hE.style.right = ((1 - trim.end) * 100) + '%';
+                }
+            } else if (isOffsetDrag) {
+                const deltaX = e.clientX - startOffsetX;
+                let newRatio = startOffsetRatio + (deltaX / displayEl.clientWidth);
+                offsetRatio = (newRatio % 1.0 + 1.0) % 1.0;
+                applyOffset();
             }
         });
 
