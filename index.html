@@ -260,7 +260,6 @@
 
     <div class="display">
         <canvas id="canvas"></canvas>
-        <div id="hStart" class="handle" style="left: 15%"></div>
         <div id="hEnd" class="handle" style="right: 15%"></div>
     </div>
 
@@ -379,7 +378,7 @@
         let activePadPitch = null;
         let audioCtx, recorder, stream, recordedBuffer, originalBuffer, sourceNode, filterNode, gainNode;
         let isRec = false, isRun = false;
-        let trim = { start: 0.15, end: 0.85 };
+        let trim = { start: 0.0, end: 0.85 };
         let normalizationGain = 1.0;
         let offsetRatio = 0.0;
 
@@ -692,9 +691,7 @@
         });
 
         let activeHandle = null;
-        const hS = document.getElementById('hStart'), hE = document.getElementById('hEnd');
-        hS.onpointerdown = (e) => { e.stopPropagation(); activeHandle = 'start'; };
-        hE.onpointerdown = (e) => { e.stopPropagation(); activeHandle = 'end'; };
+        const hE = document.getElementById('hEnd');
         
         const endTrimDrag = () => {
             if (activeHandle) {
@@ -713,37 +710,40 @@
         const displayEl = document.querySelector('.display');
 
         displayEl.addEventListener('pointerdown', (e) => {
-            if (e.target === hS || e.target === hE || activeHandle) return;
-            isOffsetDrag = true;
-            startOffsetX = e.clientX;
-            startOffsetRatio = offsetRatio;
-            displayEl.setPointerCapture(e.pointerId);
+            if (activeHandle) return;
+            const rect = displayEl.getBoundingClientRect();
+            const relativeX = e.clientX - rect.left;
+            if (relativeX < displayEl.clientWidth / 2) {
+                isOffsetDrag = true;
+                startOffsetX = e.clientX;
+                startOffsetRatio = offsetRatio;
+                displayEl.setPointerCapture(e.pointerId);
+            } else {
+                activeHandle = 'end';
+                displayEl.setPointerCapture(e.pointerId);
+            }
         });
 
         window.onpointerup = (e) => {
             endTrimDrag();
-            if (isOffsetDrag) {
-                isOffsetDrag = false;
+            if (isOffsetDrag || activeHandle) {
                 displayEl.releasePointerCapture(e.pointerId);
+                isOffsetDrag = false;
+                activeHandle = null;
             }
         };
         window.onpointercancel = (e) => {
             endTrimDrag();
-            if (isOffsetDrag) {
-                isOffsetDrag = false;
-            }
+            isOffsetDrag = false;
+            activeHandle = null;
         };
 
         window.addEventListener('pointermove', (e) => {
-            if (activeHandle) {
-                const x = Math.max(0, Math.min(1, e.clientX / window.innerWidth));
-                if (activeHandle === 'start') {
-                    trim.start = Math.min(x, trim.end - 0.05);
-                    hS.style.left = (trim.start * 100) + '%';
-                } else {
-                    trim.end = Math.max(x, trim.start + 0.05);
-                    hE.style.right = ((1 - trim.end) * 100) + '%';
-                }
+            if (activeHandle === 'end') {
+                const rect = displayEl.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / displayEl.clientWidth));
+                trim.end = Math.max(0.05, x); // Start is always 0.0, so end must be at least 0.05
+                hE.style.right = ((1 - trim.end) * 100) + '%';
             } else if (isOffsetDrag) {
                 const deltaX = e.clientX - startOffsetX;
                 let newRatio = startOffsetRatio + (deltaX / displayEl.clientWidth);
