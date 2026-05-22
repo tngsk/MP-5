@@ -615,8 +615,15 @@
         function draw() {
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = canvas.clientWidth * window.devicePixelRatio;
-            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+            // ⚡ Bolt: Only resize canvas when dimensions change to prevent unnecessary buffer reallocation
+            const newWidth = canvas.clientWidth * window.devicePixelRatio;
+            const newHeight = canvas.clientHeight * window.devicePixelRatio;
+            if (canvas.width !== newWidth || canvas.height !== newHeight) {
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
 
             if (recordedBuffer) {
                 ctx.strokeStyle = isRun ? '#00FF66' : '#888888';
