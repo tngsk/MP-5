@@ -764,9 +764,9 @@
         window.addEventListener('devicemotion', (e) => {
             const a = e.accelerationIncludingGravity;
             if (!a) return;
-            sensors.A_X = (a.x + 9.8) / 19.6;
-            sensors.A_Y = (a.y + 9.8) / 19.6;
-            sensors.A_Z = (a.z + 9.8) / 19.6;
+            sensors.A_X = Math.max(0, Math.min(1, (a.x + 9.8) / 19.6));
+            sensors.A_Y = Math.max(0, Math.min(1, (a.y + 9.8) / 19.6));
+            sensors.A_Z = Math.max(0, Math.min(1, (a.z + 9.8) / 19.6));
         });
 
         let activeHandle = null;
