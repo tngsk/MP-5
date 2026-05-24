@@ -253,7 +253,7 @@
 
     <div class="brand-stamp" style="display: flex; justify-content: space-between; align-items: center;">
         <span>MP-5 // MOTION_PLAYER</span>
-        <button id="settingsIconBtn" onclick="openSettings()">
+        <button id="settingsIconBtn" onclick="openSettings()" aria-label="Settings" title="Settings">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
     </div>
@@ -310,13 +310,13 @@
     </div>
 
     <div class="controls">
-        <button id="recBtn" class="btn rec">
+        <button id="recBtn" class="btn rec" aria-label="Record Audio" title="Record Audio">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor" stroke="none"/></svg>
         </button>
-        <button id="loadBtn" class="btn">
+        <button id="loadBtn" class="btn" aria-label="Load Audio File" title="Load Audio File">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
-        <button id="runBtn" class="btn run">
+        <button id="runBtn" class="btn run" aria-label="Play / Stop" title="Play / Stop">
             <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19" fill="currentColor" stroke="none"/></svg>
         </button>
     </div>
@@ -324,7 +324,7 @@
     <div id="filePanel">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div class="panel-section-title" style="margin: 0;">01// LOCAL_IMPORT</div>
-            <button onclick="togglePanel(false)" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 0; color: var(--text);">&times;</button>
+            <button onclick="togglePanel(false)" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 0; color: var(--text);" aria-label="Close File Panel" title="Close File Panel">&times;</button>
         </div>
         <div class="upload-trigger" onclick="document.getElementById('fileIn').click()">CHOOSE_LOCAL_FILE...</div>
         <input type="file" id="fileIn" accept="audio/*" hidden>
