@@ -4,23 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MOTION PLAYER MP-5</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         :root {
-            --bg: #EAEAEA;
-            --surface: #F5F5F5;
-            --border: #CCCCCC;
-            --text: #222222;
-            --accent-cyan: #00A3E0;
-            --accent-orange: #FF5A00;
-            --grid-dot: #D0D0D0;
+            --bg: #F9F9F9;
+            --surface: #FFFFFF;
+            --border: #D1D1D1;
+            --text: #1A1C1C;
+            --text-secondary: #5F5E5E;
+            --accent-cyan: #00E3FD;
+            --accent-orange: #FF6B00;
+            --grid-dot: #E2E2E2;
+            --surface-dark: #2F3131;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'Space Mono', monospace;
+            font-family: 'Inter', sans-serif;
             margin: 0; padding: 16px; background: var(--bg); color: var(--text);
             height: 100vh; height: 100dvh; display: flex; flex-direction: column;
             overflow: hidden; touch-action: none;
@@ -28,28 +30,43 @@
             background-size: 16px 16px;
         }
 
-        /* HARDWARE STAMP */
-        .brand-stamp {
-            font-size: 0.55rem; letter-spacing: 0.2em; opacity: 0.5; margin-bottom: 6px;
+
+        .mono-text, .pad-btn, .sensor-label, .settings-val-display, .file-item {
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        .display {
-            flex: 1.2; position: relative; background: #111;
-            border-radius: 6px; overflow: hidden; border: 2px solid var(--border);
-            box-shadow: inset 0 3px 6px rgba(0,0,0,0.3);
-            margin-bottom: 12px; z-index: 10;
+        .brand-stamp {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; padding: 0 4px;
         }
+        .header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em;
+            color: var(--text);
+            position: absolute; left: 50%; transform: translateX(-50%);
+        }
+        #settingsIconBtn {
+            color: var(--accent-orange); opacity: 1; z-index: 20;
+        }
+        .battery-icon { color: var(--accent-orange); width: 14px; height: 14px; z-index: 20; }
+
+        .display {
+            flex: 1.2; position: relative; background: var(--surface-dark);
+            border-radius: 4px; overflow: hidden; border: 1px solid var(--text);
+            margin-bottom: 16px; z-index: 10;
+        }
+        .handle {
+            position: absolute; top: 0; bottom: 0; width: 4px;
+            background: var(--accent-orange); cursor: ew-resize;
+        }
+
         #canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
         .handle {
             position: absolute; top: 0; bottom: 0; width: 2px;
             background: var(--accent-orange); cursor: ew-resize;
         }
-        .handle::after {
-            content: ''; position: absolute; bottom: 8px; left: -5px;
-            width: 12px; height: 12px; background: var(--accent-orange);
-            border-radius: 50%;
-        }
+
 
         .matrix {
             display: flex; flex-direction: column; gap: 8px; flex: 2; margin-bottom: 12px; z-index: 10; min-height: 0;
@@ -59,37 +76,54 @@
         .slots { display: flex; flex-direction: row; gap: 6px; flex: 1; min-height: 0; }
         
         .slot {
-            flex: 1; border-radius: 4px; background: var(--surface);
+            flex: 1; border-radius: 2px; background: var(--grid-dot);
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-            transition: background 0.05s, transform 0.05s; 
-            border: 1px solid var(--border); box-shadow: 0 2px 0 var(--border);
+            border: 1px solid var(--border);
             min-height: 0;
         }
-        .slot:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--border); }
-        .slot svg { width: 16px; height: 16px; stroke: var(--text); fill: none; opacity: 0.4; }
+        .slot svg { display: none; } /* Hide icons as per new design */
+
+        .slot .sensor-label { display: none; }
+        .slot.active { background: var(--accent-cyan); border-color: var(--accent-cyan); position: relative; }
+        .slot.active::after {
+            content: ''; position: absolute; width: 6px; height: 6px; background: var(--text); border-radius: 50%;
+        }
         
-        .slot .sensor-label { font-size: 0.5rem; letter-spacing: 0.1em; color: var(--text); opacity: 0.4; margin: 0; }
-        .slot.active { background: var(--text); border-color: var(--text); box-shadow: 0 2px 0 #000; }
-        .slot.active svg { stroke: var(--bg); fill: none; opacity: 1; }
-        .slot.active .sensor-label { color: var(--bg); opacity: 1; }
+        .matrix { display: flex; flex-direction: column; gap: 4px; flex: 2; margin-bottom: 12px; z-index: 10; min-height: 0; }
+        .row-label { font-family: 'Inter', sans-serif; font-size: 0.6rem; font-weight: 700; opacity: 1; color: var(--text); width: 50px; flex-shrink: 0; display:flex; align-items:center; }
+        .row { display: flex; flex-direction: row; gap: 8px; flex: 1; min-height: 0; }
+        .slots { display: flex; flex-direction: row; gap: 4px; flex: 1; min-height: 0; }
+
+        /* Add column headers for the matrix */
+        .matrix-header { display: flex; flex-direction: row; gap: 8px; margin-bottom: 4px; }
+        .matrix-header-empty { width: 50px; flex-shrink: 0; }
+        .matrix-header-labels { display: flex; flex-direction: row; gap: 4px; flex: 1; }
+        .matrix-col-label { flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--text); }
 
         .controls {
-            display: flex; height: 72px; gap: 24px; justify-content: center; align-items: center; z-index: 10;
-            flex-shrink: 0;
+            display: flex; height: 64px; gap: 16px; justify-content: center; align-items: center; z-index: 10;
+            flex-shrink: 0; margin-top: auto;
         }
         .btn {
-            width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); 
-            background: var(--surface); display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 3px 0 var(--border); transition: all 0.05s; cursor: pointer;
+            width: 64px; height: 48px; border-radius: 8px; border: 1px solid var(--text);
+            background: var(--bg); display: flex; align-items: center; justify-content: center;
+            transition: all 0.05s; cursor: pointer;
         }
-        .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--border); }
+        .btn:active { background: var(--grid-dot); }
+
+        .btn.rec svg circle { stroke: var(--text); fill: none; stroke-width: 2.5; }
+        .btn.rec.active svg circle { stroke: #ba1a1a; fill: #ba1a1a; }
         
-        .btn.rec.active { background: var(--accent-orange); border-color: var(--accent-orange); box-shadow: 0 3px 0 #C43900; }
-        .btn.run.active { background: var(--accent-cyan); border-color: var(--accent-cyan); box-shadow: 0 3px 0 #0076A3; }
-        .btn.panel-open { background: var(--text); border-color: var(--text); box-shadow: 0 3px 0 #000; }
+        .btn.run { background: var(--accent-orange); border-color: var(--accent-orange); }
+        .btn.run svg polygon { fill: var(--bg); }
+        .btn.run:active { opacity: 0.8; background: var(--accent-orange); }
+        .btn.run.active { background: var(--text); border-color: var(--text); }
         
-        .btn svg { width: 18px; height: 18px; stroke: var(--text); fill: none; stroke-width: 2.5; }
-        .btn.active svg, .btn.panel-open svg { stroke: #FFF; }
+        .btn.panel-open { background: var(--text); color: var(--bg); }
+        .btn.panel-open svg { stroke: var(--bg); }
+
+        .btn svg { width: 20px; height: 20px; stroke: var(--text); fill: none; stroke-width: 2; }
+        .btn.run svg { stroke: none; }
 
         /* FILE CONTROL PANEL */
         #filePanel {
@@ -184,15 +218,20 @@
 
         /* MODE SELECTOR & PANELS */
         .mode-selector {
-            display: flex; gap: 8px; margin-bottom: 8px; z-index: 10; flex-shrink: 0;
+            display: flex; gap: 0; margin-bottom: 16px; z-index: 10; flex-shrink: 0;
+            border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+            background: var(--grid-dot);
         }
         .mode-btn {
-            flex: 1; padding: 8px 0; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.1em;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
-            cursor: pointer; box-shadow: 0 2px 0 var(--border); transition: all 0.05s;
+            flex: 1; padding: 10px 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+            background: transparent; border: none;
+            cursor: pointer; transition: all 0.1s;
+            border-right: 1px solid var(--border);
+            color: var(--text);
         }
+        .mode-btn:last-child { border-right: none; }
         .mode-btn.active {
-            background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: 0 2px 0 #000;
+            background: var(--accent-cyan); color: var(--text);
         }
         .mode-panel {
             display: none; flex: 2; flex-direction: column; margin-bottom: 12px; z-index: 10; min-height: 0;
@@ -201,47 +240,48 @@
 
         /* XY PAD */
         .xy-controls {
-            display: flex; gap: 8px; margin-bottom: 8px;
+            display: flex; gap: 16px; margin-bottom: 8px;
         }
+        .xy-controls-col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .xy-controls-label { font-family: 'Inter', sans-serif; font-size: 0.6rem; font-weight: 700; color: var(--text); }
         .xy-controls select {
-            flex: 1; padding: 6px; font-size: 0.65rem; font-family: inherit;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+            width: 100%; padding: 8px; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+            appearance: none; color: var(--text);
         }
         .xy-pad {
-            flex: 1; background: #222; border: 2px solid var(--border); border-radius: 6px;
+            flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
             position: relative; touch-action: none; overflow: hidden;
             background-image:
-                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 20px 20px;
-            background-position: center;
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 12.5% 12.5%;
         }
         .xy-cursor {
-            position: absolute; width: 16px; height: 16px; background: var(--accent-cyan);
+            position: absolute; width: 12px; height: 12px; background: transparent;
+            border: 2px solid var(--accent-cyan);
             border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
-            box-shadow: 0 0 8px var(--accent-cyan);
             top: 50%; left: 50%;
         }
         .xy-cursor::before {
-            content: ''; position: absolute; top: 8px; left: -1000px; right: -1000px; height: 1px; background: rgba(0, 163, 224, 0.5);
+            content: ''; position: absolute; top: 3px; left: -1000px; right: -1000px; height: 1px; background: rgba(0, 227, 253, 0.3);
         }
         .xy-cursor::after {
-            content: ''; position: absolute; left: 8px; top: -1000px; bottom: -1000px; width: 1px; background: rgba(0, 163, 224, 0.5);
+            content: ''; position: absolute; left: 3px; top: -1000px; bottom: -1000px; width: 1px; background: rgba(0, 227, 253, 0.3);
         }
 
         /* 16 PAD */
         .pad-grid {
             flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
-            gap: 6px;
+            gap: 4px;
         }
         .pad-btn {
-            background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
-            box-shadow: 0 3px 0 var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem; font-weight: bold; transition: all 0.05s; touch-action: none;
+            background: var(--grid-dot); border: 1px solid var(--border); border-radius: 2px;
+            cursor: pointer; display: flex; align-items: flex-start; justify-content: flex-start; padding: 4px;
+            font-size: 0.6rem; color: var(--text); touch-action: none; transition: background 0.05s;
         }
         .pad-btn:active, .pad-btn.active {
-            transform: translateY(2px); box-shadow: 0 1px 0 var(--border);
-            background: var(--accent-orange); color: #fff; border-color: var(--accent-orange);
+            background: var(--accent-cyan); border-color: var(--accent-cyan);
         }
     </style>
 </head>
@@ -251,11 +291,14 @@
         <div class="overlay-logo">MP-5 // MOTION_PLAYER</div>
     </div>
 
-    <div class="brand-stamp" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>MP-5 // MOTION_PLAYER</span>
+    <div class="brand-stamp">
         <button id="settingsIconBtn" onclick="openSettings()" aria-label="Settings" title="Settings">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
+        <div class="header-title">SAMPLER_01</div>
+        <div class="battery-icon">
+            <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><rect x="4" y="6" width="16" height="12" rx="2" /><path d="M20 10v4" /></svg>
+        </div>
     </div>
 
     <div class="display">
@@ -272,6 +315,15 @@
 
     <div id="panel-gyro" class="mode-panel active">
         <div class="matrix">
+            <div class="matrix-header">
+                <div class="matrix-header-empty"></div>
+                <div class="matrix-header-labels">
+                    <div class="matrix-col-label">A_X</div>
+                    <div class="matrix-col-label">A_Y</div>
+                    <div class="matrix-col-label">A_Z</div>
+                    <div class="matrix-col-label">NONE</div>
+                </div>
+            </div>
             <div class="row">
                 <div class="row-label">PITCH</div>
                 <div class="slots" id="slots-pitch"></div>
@@ -289,16 +341,22 @@
 
     <div id="panel-xypad" class="mode-panel" >
         <div class="xy-controls">
-            <select id="xy-x-param">
-                <option value="filter">X: FILTER</option>
-                <option value="pitch">X: PITCH</option>
-                <option value="speed">X: SPEED</option>
-            </select>
-            <select id="xy-y-param">
-                <option value="pitch">Y: PITCH</option>
-                <option value="filter">Y: FILTER</option>
-                <option value="speed">Y: SPEED</option>
-            </select>
+            <div class="xy-controls-col">
+                <div class="xy-controls-label">X-AXIS</div>
+                <select id="xy-x-param">
+                    <option value="pitch">PITCH</option>
+                    <option value="filter">FILTER</option>
+                    <option value="speed">SPEED</option>
+                </select>
+            </div>
+            <div class="xy-controls-col">
+                <div class="xy-controls-label">Y-AXIS</div>
+                <select id="xy-y-param">
+                    <option value="filter">FILTER</option>
+                    <option value="pitch">PITCH</option>
+                    <option value="speed">SPEED</option>
+                </select>
+            </div>
         </div>
         <div class="xy-pad" id="xyPad">
             <div class="xy-cursor" id="xyCursor"></div>
@@ -311,7 +369,7 @@
 
     <div class="controls">
         <button id="recBtn" class="btn rec" aria-label="Record Audio" title="Record Audio">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor" stroke="none"/></svg>
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>
         </button>
         <button id="loadBtn" class="btn" aria-label="Load Audio File" title="Load Audio File">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -639,7 +697,7 @@
             }
 
             if (recordedBuffer) {
-                ctx.strokeStyle = isRun ? '#00FF66' : '#888888';
+                ctx.strokeStyle = isRun ? '#00E3FD' : '#888888';
                 ctx.lineWidth = 2 * window.devicePixelRatio;
                 const data = recordedBuffer.getChannelData(0);
                 const step = Math.ceil(data.length / canvas.width);
