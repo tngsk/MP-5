@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Waveform Visualizer</title>
+    <style>
+        body { background: #f0f0f0; padding: 20px; }
+        canvas {
+            width: 100%;
+            height: 150px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>波形描画テンプレート</h1>
+    <input type="file" id="fileIn" accept="audio/*">
+    <canvas id="display"></canvas>
+
+    <script>
+        const canvas = document.getElementById('display');
+        const ctx = canvas.getContext('2d');
+        let audioBuffer = null;
+        let lastWidth = 0;
+        let lastHeight = 0;
+
+        // リサイズ時のキャンバス解像度調整（ぼやけ防止）
+        function resizeCanvas() {
+            const displayWidth = Math.floor(canvas.clientWidth * window.devicePixelRatio);
+            const displayHeight = Math.floor(canvas.clientHeight * window.devicePixelRatio);
+
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+                lastWidth = displayWidth;
+                lastHeight = displayHeight;
+            }
+        }
+
+        // 音声ファイルの読み込み
+        document.getElementById('fileIn').onchange = async (e) => {
+            if (!e.target.files[0]) return;
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await e.target.files[0].arrayBuffer();
+            audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+            // 描画ループ開始
+            requestAnimationFrame(draw);
+        };
+
+        // 描画ループ
+        function draw() {
+            resizeCanvas();
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // キャンバスをクリア
+            ctx.clearRect(0, 0, w, h);
+
+            if (!audioBuffer) return;
+
+            // 左チャンネルの波形データを取得
+            const data = audioBuffer.getChannelData(0);
+            const step = Math.ceil(data.length / w);
+            const amp = h / 2;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#00E3FD'; // 波形の色
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+
+            for (let i = 0; i < w; i++) {
+                let min = 1.0;
+                let max = -1.0;
+
+                // 1ピクセルに該当するデータの範囲から最小値・最大値を取得
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+
+                const yMin = (1 + min) * amp;
+                const yMax = (1 + max) * amp;
+
+                if (i === 0) {
+                    ctx.moveTo(i, yMin);
+                } else {
+                    ctx.lineTo(i, yMin);
+                }
+                ctx.lineTo(i, yMax);
+            }
+            ctx.stroke();
+
+            // 毎フレーム描画し続ける場合は以下を有効化
+            // requestAnimationFrame(draw);
+        }
+    </script>
+</body>
+</html>

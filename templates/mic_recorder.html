@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone Recording Template</title>
+</head>
+<body>
+    <h1>マイク録音テンプレート</h1>
+
+    <button id="initBtn">1. マイク許可をリクエスト</button>
+    <button id="recBtn" disabled>2. 録音開始 (最大5秒)</button>
+    <button id="playBtn" disabled>3. 録音した音声を再生</button>
+
+    <script>
+        let audioCtx;
+        let stream;
+        let recorder;
+        let recordedBuffer;
+        let sourceNode;
+
+        const initBtn = document.getElementById('initBtn');
+        const recBtn = document.getElementById('recBtn');
+        const playBtn = document.getElementById('playBtn');
+
+        // 1. マイクのストリームを取得する
+        initBtn.onclick = async () => {
+            // AudioContextの初期化
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    initBtn.disabled = true;
+                    recBtn.disabled = false;
+                } else {
+                    alert('お使いのブラウザはマイクアクセスをサポートしていません。');
+                }
+            } catch (e) {
+                console.error("マイクアクセスエラー:", e);
+                alert("マイクのアクセスが拒否されました。");
+            }
+        };
+
+        // 2. 録音処理
+        recBtn.onclick = () => {
+            const chunks = [];
+            recorder = new MediaRecorder(stream);
+
+            // データが利用可能になるたびにチャンクに保存
+            recorder.ondataavailable = e => chunks.push(e.data);
+
+            // 録音停止時の処理
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks);
+                const arrayBuffer = await blob.arrayBuffer();
+                // 録音したデータをAudioBufferに変換
+                recordedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+                recBtn.innerText = "録音開始 (最大5秒)";
+                recBtn.disabled = false;
+                playBtn.disabled = false;
+            };
+
+            // 録音開始
+            recorder.start();
+            recBtn.innerText = "録音中...";
+            recBtn.disabled = true;
+
+            // 5秒後に自動で録音を停止するタイマー
+            setTimeout(() => {
+                if (recorder.state === 'recording') {
+                    recorder.stop();
+                }
+            }, 5000);
+        };
+
+        // 3. 再生処理
+        playBtn.onclick = () => {
+            if (!recordedBuffer) return;
+
+            sourceNode = audioCtx.createBufferSource();
+            sourceNode.buffer = recordedBuffer;
+            sourceNode.connect(audioCtx.destination);
+            sourceNode.start();
+        };
+    </script>
+</body>
+</html>
