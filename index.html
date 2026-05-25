@@ -440,6 +440,7 @@
         let trim = { start: 0.15, end: 0.85 };
         let normalizationGain = 1.0;
         let offsetRatio = 0.0;
+        let bufferVersion = 0;
 
         let appSettings = { recDuration: 5, pitchRange: 4800, filterMax: 8000, speedMax: 10 };
         let recTimeout = null;
@@ -565,6 +566,7 @@
             } else {
                 dst.set(src);
             }
+            bufferVersion++;
             calculateNormalization();
             if (isRun && sourceNode) {
                 sourceNode.buffer = new Tone.ToneAudioBuffer(recordedBuffer);
@@ -680,34 +682,56 @@
             }
         };
 
+        let lastDrawState = { bufferVersion: -1, isRun: null, width: 0, height: 0 };
+        let canvasEl = null;
+        let ctx = null;
+        let xyXParamEl = null;
+        let xyYParamEl = null;
+
         function draw() {
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
+            if (!canvasEl) {
+                canvasEl = document.getElementById('canvas');
+                ctx = canvasEl.getContext('2d');
+                xyXParamEl = document.getElementById('xy-x-param');
+                xyYParamEl = document.getElementById('xy-y-param');
+            }
 
             // ⚡ Bolt Optimization: Avoid unnecessary canvas buffer reallocation
             // by only updating width/height when they actually change.
-            const targetWidth = Math.floor(canvas.clientWidth * window.devicePixelRatio);
-            const targetHeight = Math.floor(canvas.clientHeight * window.devicePixelRatio);
+            const targetWidth = Math.floor(canvasEl.clientWidth * window.devicePixelRatio);
+            const targetHeight = Math.floor(canvasEl.clientHeight * window.devicePixelRatio);
 
-            if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-            } else {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let dimensionsChanged = false;
+            if (canvasEl.width !== targetWidth || canvasEl.height !== targetHeight) {
+                canvasEl.width = targetWidth;
+                canvasEl.height = targetHeight;
+                dimensionsChanged = true;
             }
 
-            if (recordedBuffer) {
-                ctx.strokeStyle = isRun ? '#00E3FD' : '#888888';
-                ctx.lineWidth = 2 * window.devicePixelRatio;
-                const data = recordedBuffer.getChannelData(0);
-                const step = Math.ceil(data.length / canvas.width);
-                ctx.beginPath();
-                for (let i = 0; i < canvas.width; i++) {
-                    const x = i;
-                    const y = (0.5 + data[i * step] * 0.45) * canvas.height;
-                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            // ⚡ Bolt Optimization: Memoize canvas drawing to prevent expensive redraws
+            // when the audio buffer content and playback state haven't changed.
+            if (dimensionsChanged || bufferVersion !== lastDrawState.bufferVersion || isRun !== lastDrawState.isRun) {
+                if (!dimensionsChanged) {
+                    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
                 }
-                ctx.stroke();
+
+                if (recordedBuffer) {
+                    ctx.strokeStyle = isRun ? '#00E3FD' : '#888888';
+                    ctx.lineWidth = 2 * window.devicePixelRatio;
+                    const data = recordedBuffer.getChannelData(0);
+                    const step = Math.ceil(data.length / canvasEl.width);
+                    ctx.beginPath();
+                    for (let i = 0; i < canvasEl.width; i++) {
+                        const x = i;
+                        const y = (0.5 + data[i * step] * 0.45) * canvasEl.height;
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+                lastDrawState.bufferVersion = bufferVersion;
+                lastDrawState.isRun = isRun;
+                lastDrawState.width = canvasEl.width;
+                lastDrawState.height = canvasEl.height;
             }
 
             if (isRun) {
@@ -723,8 +747,8 @@
                     fVal = sensors[mapping.filter];
                     sVal = sensors[mapping.speed];
                 } else if (currentMode === 'xypad') {
-                    const xp = document.getElementById('xy-x-param').value;
-                    const yp = document.getElementById('xy-y-param').value;
+                    const xp = xyXParamEl ? xyXParamEl.value : 'pitch';
+                    const yp = xyYParamEl ? xyYParamEl.value : 'filter';
                     if (xp === 'pitch') { pVal = xyValues.x; activePitchMap = 'XY'; } else if (yp === 'pitch') { pVal = 1.0 - xyValues.y; activePitchMap = 'XY'; }
                     if (xp === 'filter') { fVal = xyValues.x; activeFilterMap = 'XY'; } else if (yp === 'filter') { fVal = 1.0 - xyValues.y; activeFilterMap = 'XY'; }
                     if (xp === 'speed') { sVal = xyValues.x; activeSpeedMap = 'XY'; } else if (yp === 'speed') { sVal = 1.0 - xyValues.y; activeSpeedMap = 'XY'; }
