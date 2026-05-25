@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeviceMotion Sensor Template</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .data-box { background: #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-family: monospace; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <h1>加速度センサー取得テンプレート</h1>
+    <p>※iOS 13以降などではボタンによるユーザーの許可が必要です。</p>
+
+    <button id="permissionBtn" style="padding: 10px 20px; font-size: 1rem; margin-bottom: 20px;">センサーアクセスを許可</button>
+
+    <div>
+        <h3>生の加速度データ (m/s²)</h3>
+        <div class="data-box" id="rawX">X: 0</div>
+        <div class="data-box" id="rawY">Y: 0</div>
+        <div class="data-box" id="rawZ">Z: 0</div>
+    </div>
+
+    <div>
+        <h3>正規化されたデータ (0.0 〜 1.0)</h3>
+        <div class="data-box" id="normX">A_X: 0.50</div>
+        <div class="data-box" id="normY">A_Y: 0.50</div>
+        <div class="data-box" id="normZ">A_Z: 0.50</div>
+    </div>
+
+    <script>
+        // センサー値を保持するオブジェクト (0.5を中心に正規化)
+        const sensors = { A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
+
+        document.getElementById('permissionBtn').onclick = async () => {
+            try {
+                // iOS 13以降のPermission API
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    const permissionState = await DeviceMotionEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        startSensor();
+                    } else {
+                        alert('センサーのアクセスが許可されませんでした。');
+                    }
+                } else {
+                    // Android等、Permission APIが不要な場合
+                    startSensor();
+                }
+            } catch (e) {
+                console.error("Permission error:", e);
+                alert("HTTPS環境でのみ動作します。");
+            }
+        };
+
+        function startSensor() {
+            window.addEventListener('devicemotion', (e) => {
+                // 生データの取得 (重力加速度を含む場合と含まない場合があるため、環境に依存します)
+                const rawX = e.accelerationIncludingGravity.x || 0;
+                const rawY = e.accelerationIncludingGravity.y || 0;
+                const rawZ = e.accelerationIncludingGravity.z || 0;
+
+                document.getElementById('rawX').innerText = `X: ${rawX.toFixed(2)}`;
+                document.getElementById('rawY').innerText = `Y: ${rawY.toFixed(2)}`;
+                document.getElementById('rawZ').innerText = `Z: ${rawZ.toFixed(2)}`;
+
+                // -9.8 〜 +9.8 の範囲を 0.0 〜 1.0 に正規化し、クランプする処理
+                sensors.A_X = Math.max(0, Math.min(1, (rawX + 9.8) / 19.6));
+                sensors.A_Y = Math.max(0, Math.min(1, (rawY + 9.8) / 19.6));
+                // Z軸は平置きが-9.8になるため、オフセットを変えるなどの工夫が必要な場合があります
+                sensors.A_Z = Math.max(0, Math.min(1, (rawZ + 9.8) / 19.6));
+
+                document.getElementById('normX').innerText = `A_X: ${sensors.A_X.toFixed(2)}`;
+                document.getElementById('normY').innerText = `A_Y: ${sensors.A_Y.toFixed(2)}`;
+                document.getElementById('normZ').innerText = `A_Z: ${sensors.A_Z.toFixed(2)}`;
+            });
+
+            document.getElementById('permissionBtn').disabled = true;
+            document.getElementById('permissionBtn').innerText = "センサー取得中";
+        }
+    </script>
+</body>
+</html>

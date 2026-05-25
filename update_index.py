@@ -1,9 +1,8 @@
-
-with open('index.html', 'r', encoding='utf-8') as f:
+with open("index.html", "r", encoding="utf-8") as f:
     content = f.read()
 
 # 1. Replace HTML
-old_html = '''    <div class="matrix">
+old_html = """    <div class="matrix">
         <div class="row">
             <div class="row-label">PITCH</div>
             <div class="slots" id="slots-pitch"></div>
@@ -16,9 +15,9 @@ old_html = '''    <div class="matrix">
             <div class="row-label">SPEED</div>
             <div class="slots" id="slots-speed"></div>
         </div>
-    </div>'''
+    </div>"""
 
-new_html = '''    <div class="mode-selector">
+new_html = """    <div class="mode-selector">
         <button id="btn-gyro" class="mode-btn active" onclick="setMode('gyro')">GYRO</button>
         <button id="btn-xypad" class="mode-btn" onclick="setMode('xypad')">XY PAD</button>
         <button id="btn-16pad" class="mode-btn" onclick="setMode('16pad')">16 PAD</button>
@@ -61,12 +60,12 @@ new_html = '''    <div class="mode-selector">
 
     <div id="panel-16pad" class="mode-panel" style="display:none;">
         <div class="pad-grid" id="padGrid"></div>
-    </div>'''
+    </div>"""
 
 content = content.replace(old_html, new_html)
 
 # 2. Add CSS
-css_additions = '''
+css_additions = """
         /* MODE SELECTOR & PANELS */
         .mode-selector {
             display: flex; gap: 8px; margin-bottom: 8px; z-index: 10; flex-shrink: 0;
@@ -128,42 +127,42 @@ css_additions = '''
             transform: translateY(2px); box-shadow: 0 1px 0 var(--border);
             background: var(--accent-orange); color: #fff; border-color: var(--accent-orange);
         }
-'''
-content = content.replace('    </style>', css_additions + '    </style>')
+"""
+content = content.replace("    </style>", css_additions + "    </style>")
 
 # 3. Update Variables
-old_vars = '''        const sensors = { NONE: 0.5, T_X: 0.5, T_Y: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
-        const mapping = { pitch: "A_Y", filter: "T_X", speed: "NONE" };'''
+old_vars = """        const sensors = { NONE: 0.5, T_X: 0.5, T_Y: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
+        const mapping = { pitch: "A_Y", filter: "T_X", speed: "NONE" };"""
 
-new_vars = '''        const sensors = { NONE: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
+new_vars = """        const sensors = { NONE: 0.5, A_X: 0.5, A_Y: 0.5, A_Z: 0.5 };
         const mapping = { pitch: "A_Y", filter: "A_X", speed: "NONE" };
         let currentMode = 'gyro';
         let xyValues = { x: 0.5, y: 0.5 };
-        let activePadPitch = null;'''
+        let activePadPitch = null;"""
 
 content = content.replace(old_vars, new_vars)
 
 # 4. Update Icons
-old_icons = '''        const icons = {
+old_icons = """        const icons = {
             NONE: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
             T_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="16,8 20,12 16,16"/><polyline points="8,8 4,12 8,16"/></svg>',
             T_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="8,16 12,20 16,16"/><polyline points="8,8 12,4 16,8"/></svg>',
             A_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
             A_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/></svg>',
             A_Z: '<svg viewBox="0 0 24 24" stroke-width="2.5"><circle cx="12" cy="12" r="5"/></svg>'
-        };'''
+        };"""
 
-new_icons = '''        const icons = {
+new_icons = """        const icons = {
             NONE: '<svg viewBox="0 0 24 24" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
             A_X: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
             A_Y: '<svg viewBox="0 0 24 24" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/></svg>',
             A_Z: '<svg viewBox="0 0 24 24" stroke-width="2.5"><circle cx="12" cy="12" r="5"/></svg>'
-        };'''
+        };"""
 
 content = content.replace(old_icons, new_icons)
 
 # 5. Update draw() function
-old_draw = '''            if (isRun) {
+old_draw = """            if (isRun) {
                 const now = Tone.now();
                 const pVal = sensors[mapping.pitch];
                 const fVal = sensors[mapping.filter];
@@ -189,9 +188,9 @@ old_draw = '''            if (isRun) {
                 }
 
                 gainNode.gain.rampTo(normalizationGain, 0.1);
-            }'''
+            }"""
 
-new_draw = '''            if (isRun) {
+new_draw = """            if (isRun) {
                 const now = Tone.now();
 
                 let pVal = 0.5, fVal = 0.5, sVal = 0.5;
@@ -237,20 +236,20 @@ new_draw = '''            if (isRun) {
                 }
 
                 gainNode.gain.rampTo(normalizationGain, 0.1);
-            }'''
+            }"""
 
 content = content.replace(old_draw, new_draw)
 
 # 6. Remove onpointermove for T_X, T_Y
-old_pointermove = '''        window.onpointermove = (e) => {
+old_pointermove = """        window.onpointermove = (e) => {
             sensors.T_X = e.clientX / window.innerWidth;
             sensors.T_Y = e.clientY / window.innerHeight;
-        };'''
+        };"""
 
-content = content.replace(old_pointermove, '')
+content = content.replace(old_pointermove, "")
 
 # 7. Add Mode Setup Scripts
-js_additions = '''
+js_additions = """
         function setMode(mode) {
             currentMode = mode;
             ['gyro', 'xypad', '16pad'].forEach(m => {
@@ -323,9 +322,9 @@ js_additions = '''
 
             padGrid.appendChild(btn);
         }
-'''
+"""
 
-content = content.replace('    </script>', js_additions + '    </script>')
+content = content.replace("    </script>", js_additions + "    </script>")
 
-with open('index.html', 'w', encoding='utf-8') as f:
+with open("index.html", "w", encoding="utf-8") as f:
     f.write(content)
