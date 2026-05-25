@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>XY Pad Interaction Template</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; touch-action: none; }
+
+        #xyPad {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1 / 1;
+            background: #2F3131;
+            border: 2px solid #00E3FD;
+            border-radius: 8px;
+            position: relative;
+            margin: 20px auto;
+            touch-action: none; /* デフォルトのスクロール動作を無効化 */
+            cursor: crosshair;
+        }
+
+        #xyIndicator {
+            width: 24px;
+            height: 24px;
+            background: #FF6B00;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* インジケーター自体はマウスイベントを受け取らない */
+            box-shadow: 0 0 10px rgba(255, 107, 0, 0.8);
+        }
+
+        .output { text-align: center; font-size: 1.5rem; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">XY Pad テンプレート</h1>
+
+    <div class="output">
+        X: <span id="valX">0.50</span> | Y: <span id="valY">0.50</span>
+    </div>
+
+    <!-- XYパッドのエレメント -->
+    <div id="xyPad">
+        <div id="xyIndicator"></div>
+    </div>
+
+    <script>
+        const xyPad = document.getElementById('xyPad');
+        const xyIndicator = document.getElementById('xyIndicator');
+        const valXDisplay = document.getElementById('valX');
+        const valYDisplay = document.getElementById('valY');
+
+        let isXYDrag = false;
+        // 正規化されたXY値 (0.0 〜 1.0)
+        let xyValues = { x: 0.5, y: 0.5 };
+
+        // 座標からXYの値を計算して表示を更新する関数
+        function updateXY(e) {
+            const rect = xyPad.getBoundingClientRect();
+            // パッド内の相対座標を取得
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+
+            // パッドの範囲内にクランプ（制限）する
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
+
+            // インジケーターを移動
+            xyIndicator.style.left = `${x}px`;
+            xyIndicator.style.top = `${y}px`;
+
+            // 0.0 〜 1.0 に正規化
+            // Y軸は上が1.0、下が0.0になるように反転させるのが一般的
+            xyValues.x = x / rect.width;
+            xyValues.y = 1.0 - (y / rect.height);
+
+            // 値の表示を更新
+            valXDisplay.innerText = xyValues.x.toFixed(2);
+            valYDisplay.innerText = xyValues.y.toFixed(2);
+        }
+
+        // Pointer Events (Mouse, Touch, Penを統合して扱える) を使用
+        xyPad.addEventListener('pointerdown', e => {
+            isXYDrag = true;
+            updateXY(e);
+            // マウスが要素の外に出てもイベントを追跡できるようにする
+            xyPad.setPointerCapture(e.pointerId);
+        });
+
+        xyPad.addEventListener('pointermove', e => {
+            if (isXYDrag) updateXY(e);
+        });
+
+        xyPad.addEventListener('pointerup', e => {
+            isXYDrag = false;
+            xyPad.releasePointerCapture(e.pointerId);
+        });
+
+        xyPad.addEventListener('pointercancel', e => {
+            isXYDrag = false;
+            xyPad.releasePointerCapture(e.pointerId);
+        });
+    </script>
+</body>
+</html>
