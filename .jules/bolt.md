@@ -5,3 +5,7 @@
 ## 2024-05-24 - [Typed Array Memory Operations]
 **Learning:** For high-frequency, large-scale buffer manipulations in JavaScript (like continuous circular shifting of an audio buffer during UI interaction), manual `for` loops utilizing the modulo operator are a severe performance bottleneck because they execute per-sample within the JS engine.
 **Action:** Replace such manual loops with native TypedArray methods like `Float32Array.prototype.set()` combined with `subarray()`. These methods execute near memory-copy speed at the native browser level, avoiding main thread blockage.
+
+## 2024-05-25 - [Canvas Re-rendering Optimization in requestAnimationFrame]
+**Learning:** In a high-frequency `requestAnimationFrame` loop, unconditionally clearing the canvas (`ctx.clearRect`) and redrawing thousands of points (`lineTo`) is a significant CPU/GPU bottleneck, especially when the underlying data (like an audio buffer) and visualization state (like play/stop color) haven't changed.
+**Action:** Always memoize canvas drawing operations. Introduce state tracking variables to compare the current frame's data/state against the previous frame, and only redraw if changes are detected. Additionally, cache DOM lookups outside the render loop.
