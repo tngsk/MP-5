@@ -810,13 +810,17 @@
         let isOffsetDrag = false;
         let startOffsetX = 0;
         let startOffsetRatio = 0;
+        let cachedDisplayRect = null; // ⚡ Bolt Optimization: Cache to prevent layout thrashing
         const displayEl = document.querySelector('.display');
 
         displayEl.addEventListener('pointerdown', (e) => {
             if (activeHandle) return;
-            const rect = displayEl.getBoundingClientRect();
-            const relativeX = e.clientX - rect.left;
-            if (relativeX < displayEl.clientWidth / 2) {
+            cachedDisplayRect = {
+                left: displayEl.getBoundingClientRect().left,
+                width: displayEl.clientWidth
+            };
+            const relativeX = e.clientX - cachedDisplayRect.left;
+            if (relativeX < cachedDisplayRect.width / 2) {
                 isOffsetDrag = true;
                 startOffsetX = e.clientX;
                 startOffsetRatio = offsetRatio;
@@ -834,22 +838,25 @@
                 isOffsetDrag = false;
                 activeHandle = null;
             }
+            cachedDisplayRect = null;
         };
         window.onpointercancel = (e) => {
             endTrimDrag();
             isOffsetDrag = false;
             activeHandle = null;
+            cachedDisplayRect = null;
         };
 
         window.addEventListener('pointermove', (e) => {
             if (activeHandle === 'end') {
-                const rect = displayEl.getBoundingClientRect();
-                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / displayEl.clientWidth));
+                const rect = cachedDisplayRect || { left: displayEl.getBoundingClientRect().left, width: displayEl.clientWidth };
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                 trim.end = Math.max(trim.start + 0.05, x); // End must be at least 0.05 after start
                 hE.style.right = ((1 - trim.end) * 100) + '%';
             } else if (isOffsetDrag) {
+                const rect = cachedDisplayRect || { left: displayEl.getBoundingClientRect().left, width: displayEl.clientWidth };
                 const deltaX = e.clientX - startOffsetX;
-                let newRatio = startOffsetRatio + (deltaX / displayEl.clientWidth);
+                let newRatio = startOffsetRatio + (deltaX / rect.width);
                 offsetRatio = (newRatio % 1.0 + 1.0) % 1.0;
                 applyOffset();
             }
@@ -880,9 +887,10 @@
         const xyPad = document.getElementById('xyPad');
         const xyCursor = document.getElementById('xyCursor');
         let isXYDrag = false;
+        let cachedXYPadRect = null; // ⚡ Bolt Optimization: Cache to prevent layout thrashing
 
         function updateXY(e) {
-            const rect = xyPad.getBoundingClientRect();
+            const rect = cachedXYPadRect || xyPad.getBoundingClientRect();
             let x = (e.clientX - rect.left) / rect.width;
             let y = (e.clientY - rect.top) / rect.height;
             x = Math.max(0, Math.min(1, x));
@@ -893,10 +901,22 @@
             xyCursor.style.top = `${y * 100}%`;
         }
 
-        xyPad.addEventListener('pointerdown', e => { isXYDrag = true; updateXY(e); xyPad.setPointerCapture(e.pointerId); });
+        xyPad.addEventListener('pointerdown', e => {
+            isXYDrag = true;
+            cachedXYPadRect = xyPad.getBoundingClientRect();
+            updateXY(e);
+            xyPad.setPointerCapture(e.pointerId);
+        });
         xyPad.addEventListener('pointermove', e => { if (isXYDrag) updateXY(e); });
-        xyPad.addEventListener('pointerup', e => { isXYDrag = false; xyPad.releasePointerCapture(e.pointerId); });
-        xyPad.addEventListener('pointercancel', e => { isXYDrag = false; });
+        xyPad.addEventListener('pointerup', e => {
+            isXYDrag = false;
+            xyPad.releasePointerCapture(e.pointerId);
+            cachedXYPadRect = null;
+        });
+        xyPad.addEventListener('pointercancel', e => {
+            isXYDrag = false;
+            cachedXYPadRect = null;
+        });
 
         // 16 Pad logic
         const padGrid = document.getElementById('padGrid');
