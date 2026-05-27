@@ -9,3 +9,7 @@
 ## 2024-05-25 - [Canvas Re-rendering Optimization in requestAnimationFrame]
 **Learning:** In a high-frequency `requestAnimationFrame` loop, unconditionally clearing the canvas (`ctx.clearRect`) and redrawing thousands of points (`lineTo`) is a significant CPU/GPU bottleneck, especially when the underlying data (like an audio buffer) and visualization state (like play/stop color) haven't changed.
 **Action:** Always memoize canvas drawing operations. Introduce state tracking variables to compare the current frame's data/state against the previous frame, and only redraw if changes are detected. Additionally, cache DOM lookups outside the render loop.
+
+## 2024-05-26 - [Preventing Layout Thrashing in Pointer Events]
+**Learning:** Calling `getBoundingClientRect()` or accessing properties like `clientWidth` inside high-frequency event handlers such as `pointermove` forces the browser to synchronously calculate layout on every firing. This phenomenon, known as layout thrashing, severely degrades UI responsiveness and frame rate during drag interactions.
+**Action:** Cache these DOM layout metrics in variables during the initial `pointerdown` event, and read from the cache during `pointermove`. Clear the cache in the `pointerup` or `pointercancel` handlers.
