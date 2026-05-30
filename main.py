@@ -1,3 +1,4 @@
+import logging
 import os
 
 import uvicorn
@@ -25,8 +26,9 @@ async def get_files():
             f for f in os.listdir(DATA_DIR) if f.lower().endswith(supported_extensions)
         ]
         return JSONResponse(content={"files": files})
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+    except Exception:
+        logging.exception("Error reading files directory")
+        return JSONResponse(content={"error": "Internal server error"}, status_code=500)
 
 
 @app.get("/data/{filename}")
